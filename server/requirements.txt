@@ -4,3 +4,4 @@ pyopenssl
 SQLAlchemy 
 Flask-SQLAlchemy
 Flask-Migrate
+Werkzeug

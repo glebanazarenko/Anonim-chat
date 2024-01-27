@@ -56,11 +56,46 @@ def register():
 
 @app.route('/get_users', methods=['GET'])
 def get_users():
+    data = request.json
+    user_id = data.get('id')
+    username = data.get('username')
     try:
-        # Извлечение всех пользователей
-        users = User.query.all()
-        users_data = [{"id": user.id, "username": user.username, "password": user.password_hash} for user in users]
+        query = User.query
+        if user_id:
+            query = query.filter_by(id=user_id)
+        if username:
+            query = query.filter_by(username=username)
+        
+        users = query.all()
+        users_data = [{"id": user.id, "username": user.username} for user in users]
+
         return jsonify(users_data), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/update_user', methods=['POST'])
+def update_user():
+    try:
+        data = request.json
+        user_id = data.get('id')
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        new_username = data.get('new_username', None)
+
+        user = User.query.filter_by(id=user_id).first()
+        if user and user.check_password(current_password):
+            # Проверяем, существует ли уже пользователь с таким новым username
+            if new_username and User.query.filter(User.username == new_username).first():
+                return jsonify({'error': 'Username already taken'}), 400
+            if new_password:
+                user.set_password(new_password)
+            if new_username:
+                user.username = new_username
+            db.session.commit()
+            return jsonify({'message': 'User updated successfully'}), 200
+        else:
+            return jsonify({'error': 'Invalid user ID or password'}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -84,8 +119,17 @@ def send_message():
 @app.route('/get_messages', methods=['GET'])
 def get_messages():
     try:
-        # Извлечение всех сообщений
-        messages = Message.query.all()
+        data = request.json
+        sender_id = data.get('sender_id')
+        receiver_id = data.get('receiver_id')
+
+        query = Message.query
+        if sender_id:
+            query = query.filter_by(sender_id=sender_id)
+        if receiver_id:
+            query = query.filter_by(receiver_id=receiver_id)
+        
+        messages = query.all()
         messages_data = [
             {
                 "id": message.id, 
@@ -95,6 +139,7 @@ def get_messages():
             } 
             for message in messages
         ]
+
         return jsonify(messages_data), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
